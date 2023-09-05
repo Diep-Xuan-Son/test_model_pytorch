@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils import data
 import cv2
 import torch
-from argument import Preproc
+
 
 class MyDataset(data.Dataset):
 	def __init__(self, label_path, preproc=None):
@@ -99,6 +99,8 @@ def detection_collate(batch):
 	return (torch.stack(imgs, 0), targets)
 
 if __name__=="__main__":
+	from argument import Preproc
+	
 	label_path = "../datasets/water_ruler_v2/label.txt"
 	img_size, rgb_means = (640, (104, 117, 123))
 	preproc = Preproc(img_size, rgb_means)
