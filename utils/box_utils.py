@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 def point_form(boxes):
 	""" Convert prior_boxes to (xmin, ymin, xmax, ymax)
@@ -77,7 +78,6 @@ def match(threshold, truths, priors, variances, labels, landms, loc_t, conf_t, l
 	)
 	print(overlaps.max(1, keepdim=True))
 	print(overlaps.max(0, keepdim=True))
-	exit()
 	# (Bipartite Matching)
 	# [1,num_objects] best prior for each ground truth
 	best_prior_overlap, best_prior_idx = overlaps.max(1, keepdim=True)
@@ -107,8 +107,7 @@ def match(threshold, truths, priors, variances, labels, landms, loc_t, conf_t, l
 	# print("-------labels: ", labels)
 	# print(list(best_truth_idx.cpu().numpy()))
 	conf = labels[best_truth_idx]               # Shape: [num_priors]      此处为每一个anchor对应的label取出来
-	print("---------conf: ", conf)
-	print(best_truth_overlap)
+	# print("---------conf: ", conf)
 	conf[best_truth_overlap < threshold] = 0    # label as background   overlap<0.35的全部作为负样本
 	# print("---------conf: ", list(conf.cpu().numpy()))
 	# print("---------conf: ", conf)
@@ -170,3 +169,74 @@ def encode_landm(matched, priors, variances):
 	g_cxcy = g_cxcy.reshape(g_cxcy.size(0), -1)
 	# return target for smooth_l1_loss
 	return g_cxcy
+
+# Adapted from https://github.com/Hakuyume/chainer-ssd
+def decode(loc, priors, variances):
+	"""Decode locations from predictions using priors to undo
+	the encoding we did for offset regression at train time.
+	Args:
+		loc (tensor): location predictions for loc layers,
+			Shape: [num_priors,4]
+		priors (tensor): Prior boxes in center-offset form.
+			Shape: [num_priors,4].
+		variances: (list[float]) Variances of priorboxes
+	Return:
+		decoded bounding box predictions
+	"""
+
+	boxes = torch.cat((
+		priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
+		priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1])), 1)
+	boxes[:, :2] -= boxes[:, 2:] / 2
+	boxes[:, 2:] += boxes[:, :2]
+	return boxes
+
+def decode_landm(pre, priors, variances):
+	"""Decode landm from predictions using priors to undo
+	the encoding we did for offset regression at train time.
+	Args:
+		pre (tensor): landm predictions for loc layers,
+			Shape: [num_priors,10]
+		priors (tensor): Prior boxes in center-offset form.
+			Shape: [num_priors,4].
+		variances: (list[float]) Variances of priorboxes
+	Return:
+		decoded landm predictions
+	"""
+	landms = torch.cat((priors[:, :2] + pre[:, :2] * variances[0] * priors[:, 2:],
+						priors[:, :2] + pre[:, 2:4] * variances[0] * priors[:, 2:],
+						priors[:, :2] + pre[:, 4:6] * variances[0] * priors[:, 2:],
+						priors[:, :2] + pre[:, 6:8] * variances[0] * priors[:, 2:],
+						priors[:, :2] + pre[:, 8:10] * variances[0] * priors[:, 2:],
+						), dim=1)
+	return landms
+
+def py_cpu_nms(dets, thresh):
+	"""Pure Python NMS baseline."""
+	x1 = dets[:, 0]
+	y1 = dets[:, 1]
+	x2 = dets[:, 2]
+	y2 = dets[:, 3]
+	scores = dets[:, 4]
+
+	areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+	order = scores.argsort()[::-1]
+
+	keep = []
+	while order.size > 0:
+		i = order[0]
+		keep.append(i)
+		xx1 = np.maximum(x1[i], x1[order[1:]])
+		yy1 = np.maximum(y1[i], y1[order[1:]])
+		xx2 = np.minimum(x2[i], x2[order[1:]])
+		yy2 = np.minimum(y2[i], y2[order[1:]])
+
+		w = np.maximum(0.0, xx2 - xx1 + 1)
+		h = np.maximum(0.0, yy2 - yy1 + 1)
+		inter = w * h
+		ovr = inter / (areas[i] + areas[order[1:]] - inter)
+
+		inds = np.where(ovr <= thresh)[0]
+		order = order[inds + 1]
+
+	return keep

@@ -35,6 +35,17 @@ class MyDataset(data.Dataset):
 
 		self.words.append(labels)
 
+	def get_anchors(self):
+		target = []
+		for i, w in enumerate(self.words):
+			if i==0:
+				target = w
+			else:
+				target += w 
+		target = np.array(target)
+		wh = target[:, 2:4]
+		print(wh)
+
 	def __len__(self):
 		return len(self.list_img)
 

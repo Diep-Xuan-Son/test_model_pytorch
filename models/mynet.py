@@ -70,9 +70,9 @@ class MyNet(nn.Module):
 		self.ssh2 = SSH(64, 64)
 		self.ssh3 = SSH(64, 64)
 
-		self.classhead = self._make_class_head(fpn_num=3, inp=64, num_anchor=2)
-		self.bboxhead = self._make_bbox_head(fpn_num=3, inp=64, num_anchor=2)
-		self.landmarkhead = self._make_landmark_head(fpn_num=3, inp=64, num_anchor=2)
+		self.classhead = self._make_class_head(fpn_num=3, inp=64, num_anchor=3)
+		self.bboxhead = self._make_bbox_head(fpn_num=3, inp=64, num_anchor=3)
+		self.landmarkhead = self._make_landmark_head(fpn_num=3, inp=64, num_anchor=3)
 
 	def _make_class_head(self, fpn_num=3, inp=64, num_anchor=2):
 		classhead = nn.ModuleList()
@@ -95,6 +95,7 @@ class MyNet(nn.Module):
 	def forward(self, x):
 		# print(self.body)
 		out = self.body(x)
+		# print(out)
 
 		fpn = self.fpn(out)
 		# print(fpn)
@@ -106,8 +107,10 @@ class MyNet(nn.Module):
 		class_regressions = torch.cat([self.classhead[i](ft) for i, ft in enumerate(features)], dim=1)
 		bbox_regressions = torch.cat([self.bboxhead[i](ft) for i, ft in enumerate(features)], dim=1)
 		landmark_regressions = torch.cat([self.landmarkhead[i](ft) for i, ft in enumerate(features)], dim=1)
-
-		return (class_regressions, bbox_regressions, landmark_regressions)
+		if self.phase == "train":
+			return (class_regressions, bbox_regressions, landmark_regressions)
+		else:
+			return (F.softmax(classifications, dim=-1), bbox_regressions, landmark_regressions)
 
 if __name__=="__main__":
 	mynet = MyNet()

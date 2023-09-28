@@ -22,9 +22,11 @@ class Preproc(object):
 		labels = target[:, -1].copy()
 		landms = target[:, 4:-1].copy()
 
-		w, h, _ = img.shape
+		h, w, _ = img.shape
 
 		img_t = _resize_subtract_mean(img, self.imgsz, self.rgb_means)
+		# _, h, w = img_t.shape
+		# print(wh[0]*wh[1])
 		boxes[:, 0::2] /= w 
 		boxes[:, 1::2] /= h
 

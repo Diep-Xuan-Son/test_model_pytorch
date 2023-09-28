@@ -6,7 +6,9 @@ from math import ceil
 class PriorBox(object):
 	def __init__(self, image_size=None, phase='train'):
 		super(PriorBox, self).__init__()
-		self.min_sizes = [[16, 32], [64, 128], [256, 512]]
+		self.min_sizes = [[[10, 13], [16, 30], [33, 23]], \
+						[[30, 61], [62, 45], [59, 119]], \
+						[[116, 90], [156, 198], [373, 326]]]
 		# self.min_sizes = [[16, 32], [64, 128], [256, 512]]
 		self.steps = [8, 16, 32]
 		self.clip = False
@@ -20,8 +22,8 @@ class PriorBox(object):
 			min_sizes = self.min_sizes[k]
 			for i, j in product(range(f[0]), range(f[1])):
 				for min_size in min_sizes:
-					s_kx = min_size / self.image_size[1]
-					s_ky = min_size / self.image_size[0]
+					s_kx = min_size[0] / self.image_size[1]
+					s_ky = min_size[1] / self.image_size[0]
 					dense_cx = [x * self.steps[k] / self.image_size[1] for x in [j + 0.5]]
 					dense_cy = [y * self.steps[k] / self.image_size[0] for y in [i + 0.5]]
 					for cy, cx in product(dense_cy, dense_cx):

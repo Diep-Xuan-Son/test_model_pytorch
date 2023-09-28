@@ -190,7 +190,7 @@ class MobileNetV3(nn.Module):
 
 		if option == 'large':
 			setting = [
-			   # k, exp, c, se,     nl,  s
+			   # k, exp, c,   se,    nl,  s
 				[[3, 16,  16, False, 'RE', 1],
 				[3, 64,  24, False, 'RE', 2],
 				[3, 72,  24, False, 'RE', 1],
